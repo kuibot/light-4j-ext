@@ -12,6 +12,7 @@
 
     <artifactId>charset-config</artifactId>
     <packaging>jar</packaging>
+    <name>charset-config</name>
     <description>A charset config module that is used by light-4j-ext.</description>
 
     <properties>

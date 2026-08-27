@@ -12,6 +12,7 @@
 
     <artifactId>charset</artifactId>
     <packaging>jar</packaging>
+    <name>charset</name>
     <description>A middleware handler for charset of content type.</description>
 
     <properties>
