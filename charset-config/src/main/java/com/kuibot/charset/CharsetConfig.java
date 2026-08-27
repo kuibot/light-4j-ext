@@ -15,6 +15,7 @@
 package com.kuibot.charset;
 
 import com.networknt.config.Config;
+import com.networknt.server.ModuleRegistry;
 
 import java.util.List;
 import java.util.Map;
@@ -34,35 +35,42 @@ public class CharsetConfig {
     private Map<String, Object> mappedConfig;
     public static final String CONFIG_NAME = "charset";
 
-    private final Config config;
     // In order to maintain consistency with the Light-4j core library, the default charset is set here to ISO-8859-1.
     private String charset = "ISO-8859-1";
     private boolean enabled;
     private List<String> contentTypeList;
+    private static volatile CharsetConfig instance;
 
     private CharsetConfig() {
         this(CONFIG_NAME);
     }
 
     private CharsetConfig(String configName) {
-        config = Config.getInstance();
-        mappedConfig = config.getJsonMapConfigNoCache(configName);
-
+        mappedConfig = Config.getInstance().getJsonMapConfig(configName);
         setConfigData();
     }
 
     public static CharsetConfig load() {
-        return new CharsetConfig();
+        return load(CONFIG_NAME);
     }
 
     public static CharsetConfig load(String configName) {
+        if (CONFIG_NAME.equals(configName)) {
+            Map<String, Object> mappedConfig = Config.getInstance().getJsonMapConfig(configName);
+            if (instance != null && instance.getMappedConfig() == mappedConfig) {
+                return instance;
+            }
+            synchronized (CharsetConfig.class) {
+                mappedConfig = Config.getInstance().getJsonMapConfig(configName);
+                if (instance != null && instance.getMappedConfig() == mappedConfig) {
+                    return instance;
+                }
+                instance = new CharsetConfig(configName);
+                ModuleRegistry.registerModule(configName, CharsetConfig.class.getName(), Config.getNoneDecryptedInstance().getJsonMapConfigNoCache(configName), null);
+                return instance;
+            }
+        }
         return new CharsetConfig(configName);
-    }
-
-    public void reload() {
-        mappedConfig = config.getJsonMapConfigNoCache(CONFIG_NAME);
-
-        setConfigData();
     }
 
     public boolean isEnabled() {
@@ -82,11 +90,14 @@ public class CharsetConfig {
     }
 
     private void setConfigData() {
-        Object object = getMappedConfig().get(ENABLED);
+        if (mappedConfig == null) {
+            return;
+        }
+        Object object = mappedConfig.get(ENABLED);
         if (object != null) enabled = Config.loadBooleanValue(ENABLED, object);
-        object = getMappedConfig().get(CHARSET);
+        object = mappedConfig.get(CHARSET);
         if (object != null) charset = (String) object;
-        object = getMappedConfig().get(CONTENT_TYPE_LIST);
+        object = mappedConfig.get(CONTENT_TYPE_LIST);
         if (object != null) contentTypeList = (List<String>) object;
     }
 }

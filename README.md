@@ -2,4 +2,4 @@
 
 An extension library for the Light-4j project.
 
-The minimum required Java version for this library is Java 11.
+The minimum required Java version for this library is Java 21.

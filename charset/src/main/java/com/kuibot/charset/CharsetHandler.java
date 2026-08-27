@@ -15,10 +15,8 @@
 
 package com.kuibot.charset;
 
-import com.networknt.config.Config;
 import com.networknt.handler.Handler;
 import com.networknt.handler.MiddlewareHandler;
-import com.networknt.utility.ModuleRegistry;
 import io.undertow.Handlers;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
@@ -40,14 +38,16 @@ public class CharsetHandler implements MiddlewareHandler {
     static final Logger logger = LoggerFactory.getLogger(CharsetHandler.class);
 
     public static final String CONFIG_NAME = "charset";
-    static CharsetConfig config = (CharsetConfig) Config.getInstance().getJsonObjectConfig(CONFIG_NAME, CharsetConfig.class);
+    private String configName = CharsetConfig.CONFIG_NAME;
 
     private volatile HttpHandler next;
 
     public CharsetHandler() {
+        CharsetConfig.load(configName);
+        if (logger.isInfoEnabled()) logger.info("CharsetHandler is loaded.");
     }
 
-    private boolean isTextContentType(String contentType) {
+    private boolean isTextContentType(CharsetConfig config, String contentType) {
         if (config.getContentTypeList() == null) return false;
 
         if (contentType == null) {
@@ -59,6 +59,7 @@ public class CharsetHandler implements MiddlewareHandler {
 
     @Override
     public void handleRequest(final HttpServerExchange exchange) throws Exception {
+        CharsetConfig config = CharsetConfig.load(configName);
         if (exchange.isInIoThread()) {
             exchange.dispatch(this);
             return;
@@ -75,7 +76,7 @@ public class CharsetHandler implements MiddlewareHandler {
                     if (contentType != null) {
                         String baseContentType = contentType.split(";")[0].trim().toLowerCase();
 
-                        if (isTextContentType(baseContentType)) {
+                        if (isTextContentType(config, baseContentType)) {
                             // Check whether the charset parameter is already included
                             if (!contentType.toLowerCase().contains("charset")) {
                                 String newContentType = baseContentType + "; charset=" + config.getCharset();
@@ -114,18 +115,6 @@ public class CharsetHandler implements MiddlewareHandler {
 
     @Override
     public boolean isEnabled() {
-        return config.isEnabled();
-    }
-
-    @Override
-    public void register() {
-        ModuleRegistry.registerModule(CharsetConfig.CONFIG_NAME, CharsetHandler.class.getName(), Config.getNoneDecryptedInstance().getJsonMapConfigNoCache(CharsetConfig.CONFIG_NAME), null);
-    }
-
-    @Override
-    public void reload() {
-        config = (CharsetConfig) Config.getInstance().getJsonObjectConfig(CONFIG_NAME, CharsetConfig.class);
-        ModuleRegistry.registerModule(CharsetConfig.CONFIG_NAME, CharsetHandler.class.getName(), Config.getNoneDecryptedInstance().getJsonMapConfigNoCache(CharsetConfig.CONFIG_NAME), null);
-        if (logger.isInfoEnabled()) logger.info("CharsetHandler is reloaded.");
+        return CharsetConfig.load(configName).isEnabled();
     }
 }
